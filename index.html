@@ -1,137 +1,770 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BAN-TYO TCG 批次上傳多頁買取系統 (JPG輸出版)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BAN-TYO TCG 批次上傳多頁買取系統 (JPG輸出版)</title>
+  <!-- 引入 html2canvas 庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* --- 基礎佈局 --- */
+    body {
+      margin: 0;
+      padding: 15px 10px 100px 10px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(180deg, #1A1C4B 0%, #FF5E36 50%, #FFAE33 100%) fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
 
-    <!-- 👑 引入 html2canvas 庫，實現網頁轉高清圖片導出 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        /* --- 基礎佈局 --- */
-        body {
-            margin: 0; padding: 15px 10px 100px 10px;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(180deg, #1A1C4B 0%, #FF5E36 50%, #FFAE33 100%) fixed;
-            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    /* 頂部控制面板 */
+    .control-panel {
+      position: fixed;
+      top: 10px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 10px 20px;
+      border-radius: 30px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      z-index: 9999;
+      border: 1px solid #ff9900;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      color: #000;
+      border: none;
+      padding: 7px 15px;
+      font-weight: bold;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-add { background: #00b0ff; color: #fff; }
+    .btn-template { background: #ff9900; color: #000; }
+    .btn-save-draft { background: #e040fb; color: #fff; }
+
+    /* 頁面包裹與海報主體 */
+    .pages-wrapper {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 60px;
+      margin-top: 90px;
+    }
+
+    .page-setting-bar {
+      background: #f5f5f5;
+      padding: 8px 12px;
+      border: 2px solid #000;
+      border-bottom: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .page-setting-bar select, .page-setting-bar input[type="text"] {
+      padding: 4px 8px;
+      font-weight: bold;
+      border: 2px solid #000;
+      font-size: 12px;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .batch-upload-btn-wrapper {
+      position: relative;
+      background: #ff9900;
+      color: #000;
+      padding: 5px 10px;
+      font-weight: bold;
+      font-size: 12px;
+      border: 2px solid #000;
+      border-radius: 4px;
+    }
+
+    .batch-upload-btn-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .btn-action {
+      background: #fff;
+      border: 2px solid #000;
+      padding: 4px 8px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btn-export-jpg { background: #ff007f; color: #fff; }
+    .btn-delete-page { background: #ff3b30; color: #fff; }
+    .btn-print { background: #00e676; }
+
+    /* 海報核心樣式 */
+    .poster-container {
+      background-color: #fff;
+      width: 100%;
+      border: 6px solid #000;
+      padding: 12px;
+      box-sizing: border-box;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 700px;
+    }
+
+    /* 店舖 Icon */
+    .logo-upload-area {
+      width: 70px;
+      height: 70px;
+      background-color: #f0f0f0;
+      border: 3px solid #000;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .logo-upload-area img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .logo-placeholder {
+      font-size: 9px;
+      font-weight: bold;
+      text-align: center;
+      color: #666;
+      line-height: 1.1;
+      position: absolute;
+    }
+
+    .logo-upload-area input[type="file"] {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      z-index: 15;
+      cursor: pointer;
+    }
+
+    .header-zone {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .date-badge {
+      background-color: #d11a2a;
+      color: #fff;
+      padding: 4px 6px;
+      font-size: 14px;
+      font-weight: bold;
+      border: 3px solid #000;
+      text-align: center;
+      min-width: 55px;
+      box-sizing: border-box;
+    }
+
+    .date-badge span {
+      display: block;
+      font-size: 9px;
+      background-color: #fff;
+      color: #000;
+      margin-top: 2px;
+      padding: 1px;
+    }
+
+    .main-title {
+      background: linear-gradient(180deg, #fff 0%, #ffcc00 40%, #ff9900 100%);
+      border: 4px solid #000;
+      border-radius: 8px;
+      padding: 6px 12px;
+      text-align: center;
+      flex-grow: 1;
+      box-shadow: 0 3px 0 #bc7a00;
+    }
+
+    .main-title h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #e60012;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+      letter-spacing: 2px;
+      font-style: italic;
+      line-height: 1;
+    }
+
+    .main-title .subtitle {
+      margin-top: 3px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #fff;
+      background-color: #000;
+      padding: 1px 6px;
+      display: inline-block;
+    }
+
+    @media (min-width: 600px) {
+      .main-title h1 { font-size: 42px; }
+      .logo-upload-area { width: 90px; height: 90px; }
+      .header-zone { gap: 15px; }
+    }
+
+    /* 卡片網格 */
+    .card-grid {
+      display: grid;
+      gap: 8px;
+      background-color: #000;
+      padding: 8px;
+      border: 2px solid #000;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .grid-1 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-9 { grid-template-columns: repeat(3, 1fr); }
+    .grid-12 { grid-template-columns: repeat(3, 1fr); }
+    .grid-15 { grid-template-columns: repeat(3, 1fr); }
+
+    @media (min-width: 600px) {
+      .grid-12 { grid-template-columns: repeat(4, 1fr); }
+      .grid-15 { grid-template-columns: repeat(5, 1fr); }
+    }
+
+    /* 卡片項目 (支援拖曳排序) */
+    .card-item {
+      background-color: #fff;
+      border: 2px solid #000;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+      justify-content: space-between;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+
+    .card-item:active { cursor: grabbing; }
+
+    .card-item.dragging {
+      opacity: 0.4;
+      transform: scale(0.95);
+      border: 2px dashed #ff9900;
+    }
+
+    .card-item.drag-over {
+      border: 3px solid #00b0ff !important;
+      box-shadow: 0 0 10px #00b0ff;
+    }
+
+    .image-container {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      background-color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top;
+      pointer-events: none;
+    }
+
+    .phone-upload-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border: 1.5px solid #fff;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      z-index: 5;
+    }
+
+    .phone-upload-btn input[type="file"] {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* 卡名與價錢固定不移位 */
+    .card-info {
+      background-color: #fff;
+      padding: 4px 2px;
+      font-size: 12px;
+      font-weight: bold;
+      border-top: 2px solid #000;
+      border-bottom: 2px solid #000;
+      text-align: center;
+      word-break: break-all;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    .price-tag {
+      background-color: #fff900;
+      color: #e60012;
+      font-weight: 900;
+      font-size: 20px;
+      text-align: center;
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .price-label {
+      white-space: pre;
+      background-color: #000;
+      color: #fff;
+      font-size: 8px;
+      line-height: 1.1;
+      padding: 2px;
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      bottom: 2px;
+      display: flex;
+      align-items: center;
+    }
+
+    .price-tag-value {
+      flex-grow: 1;
+      text-align: center;
+      outline: none;
+    }
+
+    /* 格數字體動態調整 */
+    .grid-1 .card-info { font-size: 24px; padding: 10px; }
+    .grid-1 .price-tag { font-size: 48px; }
+    .grid-1 .price-label { font-size: 14px; padding: 4px; }
+    .grid-2 .card-info { font-size: 18px; }
+    .grid-2 .price-tag { font-size: 34px; }
+    .grid-4 .card-info { font-size: 15px; }
+    .grid-4 .price-tag { font-size: 26px; }
+
+    .footer-notes {
+      margin-top: 10px;
+      background-color: #e60012;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 8px;
+      text-align: center;
+      border: 3px solid #000;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    /* 輸出 JPG 模式隱藏輔助 UI */
+    .exporting-jpg .phone-upload-btn,
+    .exporting-jpg .logo-placeholder {
+      display: none !important;
+    }
+
+    /* Modal 彈窗 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      border: 4px solid #000;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+    }
+
+    .template-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border: 2px solid #000;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    .template-item-title { font-weight: bold; }
+
+    /* --- A4 PDF 列印樣式 --- */
+    @media print {
+      .control-panel, .page-setting-bar, .phone-upload-btn {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+        padding: 0 !important;
+      }
+      .pages-wrapper {
+        margin-top: 0 !important;
+      }
+      .poster-container {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: 288mm !important;
+        max-height: 288mm !important;
+        page-break-after: always;
+      }
+      .grid-12 {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 4px !important;
+        padding: 4px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 控制面板 -->
+  <div class="control-panel">
+    <button class="btn btn-add" onclick="addNewPage()">+ 新增頁面</button>
+    <button class="btn btn-template" onclick="openTemplateModal()">模組範本</button>
+    <button class="btn btn-save-draft" onclick="printAllPages()">🖨️ 全部列印</button>
+  </div>
+
+  <!-- 頁面容器區塊 -->
+  <div class="pages-wrapper" id="pagesWrapper"></div>
+
+  <!-- 範本 Modal -->
+  <div class="modal-overlay" id="templateModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>選擇模組範本</span>
+        <button class="btn-action" onclick="closeTemplateModal()">✕</button>
+      </div>
+      <div id="templateList"></div>
+    </div>
+  </div>
+
+  <script>
+    let pageCounter = 0;
+
+    // 新增頁面
+    function addNewPage(gridType = 'grid-12') {
+      pageCounter++;
+      const pageId = `page-${pageCounter}`;
+      const wrapper = document.getElementById('pagesWrapper');
+
+      const pageElement = document.createElement('div');
+      pageElement.className = 'page-block';
+      pageElement.id = pageId;
+
+      pageElement.innerHTML = `
+        <div class="page-setting-bar">
+          <div class="action-group">
+            <label>網格配置：</label>
+            <select onchange="changeGrid('${pageId}', this.value)">
+              <option value="grid-1" ${gridType==='grid-1'?'selected':''}>1 格</option>
+              <option value="grid-2" ${gridType==='grid-2'?'selected':''}>2 格</option>
+              <option value="grid-4" ${gridType==='grid-4'?'selected':''}>4 格</option>
+              <option value="grid-9" ${gridType==='grid-9'?'selected':''}>9 格</option>
+              <option value="grid-12" ${gridType==='grid-12'?'selected':''}>12 格</option>
+              <option value="grid-15" ${gridType==='grid-15'?'selected':''}>15 格</option>
+            </select>
+          </div>
+          <div class="action-group">
+            <div class="batch-upload-btn-wrapper">
+              📷 批次上傳圖片
+              <input type="file" multiple accept="image/*" onchange="batchUploadImages('${pageId}', this)">
+            </div>
+            <button class="btn-action btn-export-jpg" onclick="exportToJPG('${pageId}')">🖼️ 導出 JPG</button>
+            <button class="btn-action btn-delete-page" onclick="deletePage('${pageId}')">刪除頁面</button>
+          </div>
+        </div>
+
+        <div class="poster-container" id="poster-${pageId}">
+          <div class="header-zone">
+            <div class="logo-upload-area">
+              <span class="logo-placeholder">上傳 Logo</span>
+              <img src="" style="display:none;" />
+              <input type="file" accept="image/*" onchange="uploadLogo(this)">
+            </div>
+            <div class="main-title">
+              <h1 contenteditable="true">高價買取中</h1>
+              <div class="subtitle" contenteditable="true">BAN-TYO TCG 特效支援店</div>
+            </div>
+            <div class="date-badge">
+              <div contenteditable="true">最新</div>
+              <span>更新</span>
+            </div>
+          </div>
+
+          <div class="card-grid ${gridType}" id="grid-${pageId}"></div>
+
+          <div class="footer-notes" contenteditable="true">
+            註：卡況需良好，價格按當日版本為準，本舖保留最終決定權。
+          </div>
+        </div>
+      `;
+
+      wrapper.appendChild(pageElement);
+      renderGridItems(pageId, parseInt(gridType.replace('grid-', '')) || 12);
+    }
+
+    // 渲染卡片格子
+    function renderGridItems(pageId, count) {
+      const gridContainer = document.getElementById(`grid-${pageId}`);
+      gridContainer.innerHTML = '';
+
+      for (let i = 0; i < count; i++) {
+        const item = document.createElement('div');
+        item.className = 'card-item';
+        item.draggable = true;
+        item.innerHTML = `
+          <div class="image-container">
+            <img src="" style="display:none;" />
+            <div class="phone-upload-btn">
+              📷
+              <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
+            </div>
+          </div>
+          <div class="card-info" contenteditable="true">卡牌名稱 / 編號</div>
+          <div class="price-tag">
+            <div class="price-label">買取<br>HKD</div>
+            <div class="price-tag-value" contenteditable="true">$00</div>
+          </div>
+        `;
+
+        // 綁定拖曳事件
+        bindDragEvents(item);
+        gridContainer.appendChild(item);
+      }
+    }
+
+    // 切換網格配置
+    function changeGrid(pageId, gridType) {
+      const gridContainer = document.getElementById(`grid-${pageId}`);
+      gridContainer.className = `card-grid ${gridType}`;
+      const count = parseInt(gridType.replace('grid-', ''));
+      renderGridItems(pageId, count);
+    }
+
+    // 刪除頁面
+    function deletePage(pageId) {
+      const page = document.getElementById(pageId);
+      if (page && confirm('確定要刪除此頁面嗎？')) {
+        page.remove();
+      }
+    }
+
+    // 單張卡片上傳
+    function uploadSingleCardImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = input.closest('.image-container').querySelector('img');
+          img.src = e.target.result;
+          img.style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // 批次圖片上傳
+    function batchUploadImages(pageId, input) {
+      const files = Array.from(input.files);
+      if (!files.length) return;
+
+      const cardItems = document.querySelectorAll(`#grid-${pageId} .card-item`);
+      files.forEach((file, index) => {
+        if (index < cardItems.length) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = cardItems[index].querySelector('.image-container img');
+            img.src = e.target.result;
+            img.style.display = 'block';
+          };
+          reader.readAsDataURL(file);
         }
+      });
+    }
 
-        /* 頂部控制面板 */
-        .control-panel {
-            position: fixed; top: 10px; background: rgba(0, 0, 0, 0.9);
-            padding: 10px 20px; border-radius: 30px; display: flex; gap: 12px; align-items: center;
-            z-index: 9999; border: 1px solid #ff9900; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            flex-wrap: wrap; justify-content: center;
+    // 上傳 Logo
+    function uploadLogo(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const container = input.closest('.logo-upload-area');
+          const img = container.querySelector('img');
+          const placeholder = container.querySelector('.logo-placeholder');
+          img.src = e.target.result;
+          img.style.display = 'block';
+          if (placeholder) placeholder.style.display = 'none';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // 卡片拖曳排序 API
+    let draggedItem = null;
+
+    function bindDragEvents(item) {
+      item.addEventListener('dragstart', function () {
+        draggedItem = item;
+        setTimeout(() => item.classList.add('dragging'), 0);
+      });
+
+      item.addEventListener('dragend', function () {
+        item.classList.remove('dragging');
+        draggedItem = null;
+      });
+
+      item.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        item.classList.add('drag-over');
+      });
+
+      item.addEventListener('dragleave', function () {
+        item.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', function (e) {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        if (draggedItem && draggedItem !== item) {
+          const grid = item.parentNode;
+          const items = Array.from(grid.children);
+          const draggedIdx = items.indexOf(draggedItem);
+          const targetIdx = items.indexOf(item);
+
+          if (draggedIdx < targetIdx) {
+            grid.insertBefore(draggedItem, item.nextSibling);
+          } else {
+            grid.insertBefore(draggedItem, item);
+          }
         }
-        .btn { color: #000; border: none; padding: 7px 15px; font-weight: bold; border-radius: 20px; cursor: pointer; font-size: 13px; }
-        .btn-add { background: #00b0ff; color: #fff; }
-        .btn-template { background: #ff9900; color: #000; }
-        .btn-save-draft { background: #e040fb; color: #fff; }
+      });
+    }
 
-        /* 頁面包裹與海報主體 */
-        .pages-wrapper { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 60px; margin-top: 90px; }
-        
-        .page-setting-bar { 
-            background: #f5f5f5; padding: 8px 12px; border: 2px solid #000; border-bottom: none; 
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
-        }
-        .page-setting-bar select, .page-setting-bar input[type="text"] { padding: 4px 8px; font-weight: bold; border: 2px solid #000; font-size: 12px; }
-        
-        .action-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-        .batch-upload-btn-wrapper { position: relative; background: #ff9900; color: #000; padding: 5px 10px; font-weight: bold; font-size: 12px; border: 2px solid #000; border-radius: 4px; }
-        .batch-upload-btn-wrapper input[type="file"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-        .btn-action { background: #fff; border: 2px solid #000; padding: 4px 8px; font-weight: bold; font-size: 12px; cursor: pointer; border-radius: 4px; }
-        .btn-export-jpg { background: #ff007f; color: #fff; }
-        .btn-delete-page { background: #ff3b30; color: #fff; }
-        .btn-print { background: #00e676; }
+    // 導出 JPG
+    function exportToJPG(pageId) {
+      const poster = document.getElementById(`poster-${pageId}`);
+      poster.classList.add('exporting-jpg');
 
-        /* --- 海報核心樣式 --- */
-        .poster-container {
-            background-color: #fff; width: 100%; border: 6px solid #000;
-            padding: 12px; box-sizing: border-box; position: relative;
-            display: flex; flex-direction: column; min-height: 700px;
-        }
+      html2canvas(poster, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `${pageId}-buyback.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+        poster.classList.remove('exporting-jpg');
+      }).catch(err => {
+        console.error('JPG 匯出失敗:', err);
+        poster.classList.remove('exporting-jpg');
+      });
+    }
 
-        /* 店舖 Icon 完整顯示 */
-        .logo-upload-area { 
-            width: 70px; height: 70px; background-color: #f0f0f0; border: 3px solid #000; 
-            border-radius: 50%; position: relative; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; flex-shrink: 0;
-        }
-        .logo-upload-area img { width: 100%; height: 100%; object-fit: cover; }
-        .logo-placeholder { font-size: 9px; font-weight: bold; text-align: center; color: #666; line-height: 1.1; position: absolute; }
-        .logo-upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; opacity: 0; z-index: 15; cursor: pointer; }
+    // 列印所有頁面
+    function printAllPages() {
+      window.print();
+    }
 
-        .header-zone { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; flex-shrink: 0; }
-        .date-badge { background-color: #d11a2a; color: #fff; padding: 4px 6px; font-size: 14px; font-weight: bold; border: 3px solid #000; text-align: center; min-width: 55px; box-sizing: border-box; }
-        .date-badge span { display: block; font-size: 9px; background-color: #fff; color: #000; margin-top: 2px; padding: 1px; }
+    // 模組 Modal 控制
+    function openTemplateModal() {
+      const modal = document.getElementById('templateModal');
+      const list = document.getElementById('templateList');
+      list.innerHTML = `
+        <div class="template-item">
+          <span class="template-item-title">標準 12 格模組</span>
+          <button class="btn-action" onclick="addNewPage('grid-12'); closeTemplateModal();">套用</button>
+        </div>
+        <div class="template-item">
+          <span class="template-item-title">熱門焦點 4 格模組</span>
+          <button class="btn-action" onclick="addNewPage('grid-4'); closeTemplateModal();">套用</button>
+        </div>
+        <div class="template-item">
+          <span class="template-item-title">高價單張 1 格模組</span>
+          <button class="btn-action" onclick="addNewPage('grid-1'); closeTemplateModal();">套用</button>
+        </div>
+      `;
+      modal.style.display = 'flex';
+    }
 
-        .main-title { background: linear-gradient(180deg, #fff 0%, #ffcc00 40%, #ff9900 100%); border: 4px solid #000; border-radius: 8px; padding: 6px 12px; text-align: center; flex-grow: 1; box-shadow: 0 3px 0 #bc7a00; }
-        .main-title h1 { margin: 0; font-size: 28px; color: #e60012; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; letter-spacing: 2px; font-style: italic; line-height: 1; }
-        .main-title .subtitle { margin-top: 3px; font-size: 12px; font-weight: 900; color: #fff; background-color: #000; padding: 1px 6px; display: inline-block; }
+    function closeTemplateModal() {
+      document.getElementById('templateModal').style.display = 'none';
+    }
 
-        @media (min-width: 600px) {
-            .main-title h1 { font-size: 42px; }
-            .logo-upload-area { width: 90px; height: 90px; }
-            .header-zone { gap: 15px; }
-        }
-
-        /* 卡片網格 */
-        .card-grid { display: grid; gap: 8px; background-color: #000; padding: 8px; border: 2px solid #000; flex: 1 1 auto; min-height: 0; }
-        .grid-1 { grid-template-columns: 1fr; }
-        .grid-2 { grid-template-columns: repeat(2, 1fr); }
-        .grid-4 { grid-template-columns: repeat(2, 1fr); }
-        .grid-9 { grid-template-columns: repeat(3, 1fr); }
-        .grid-12 { grid-template-columns: repeat(3, 1fr); }
-        .grid-15 { grid-template-columns: repeat(3, 1fr); }
-
-        @media (min-width: 600px) {
-            .grid-12 { grid-template-columns: repeat(4, 1fr); } 
-            .grid-15 { grid-template-columns: repeat(5, 1fr); } 
-        }
-
-        /* 卡片項目 (支援拖曳排序) */
-        .card-item { 
-            background-color: #fff; border: 2px solid #000; 
-            display: flex; flex-direction: column; position: relative; 
-            overflow: hidden; min-height: 0; justify-content: space-between; 
-            cursor: grab; user-select: none; transition: transform 0.15s, opacity 0.15s;
-        }
-        .card-item:active { cursor: grabbing; }
-        .card-item.dragging { opacity: 0.4; transform: scale(0.95); border: 2px dashed #ff9900; }
-        .card-item.drag-over { border: 3px solid #00b0ff !important; box-shadow: 0 0 10px #00b0ff; }
-
-        .image-container { width: 100%; flex: 1 1 auto; min-height: 0; position: relative; background-color: #e0e0e0; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        .image-container img { width: 100%; height: 100%; object-fit: cover; object-position: top; pointer-events: none; } 
-
-        .phone-upload-btn { position: absolute; top: 4px; right: 4px; background: rgba(0, 0, 0, 0.8); color: white; border: 1.5px solid #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; font-size: 12px; z-index: 5; }
-        .phone-upload-btn input[type="file"] { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-
-        /* 卡名與價錢固定不移位 */
-        .card-info { background-color: #fff; padding: 4px 2px; font-size: 12px; font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; text-align: center; word-break: break-all; flex-shrink: 0; }
-        .price-tag { background-color: #fff900; color: #e60012; font-weight: 900; font-size: 20px; text-align: center; padding: 4px 10px; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
-        .price-label { white-space: pre; background-color: #000; color: #fff; font-size: 8px; line-height: 1.1; padding: 2px; position: absolute; left: 2px; top: 2px; bottom: 2px; display: flex; align-items: center; }
-        .price-tag-value { flex-grow: 1; text-align: center; }
-
-        /* 格數字體設定 */
-        .grid-1 .card-info { font-size: 24px; padding: 10px; } .grid-1 .price-tag { font-size: 48px; } .grid-1 .price-label { font-size: 14px; padding: 4px; }
-        .grid-2 .card-info { font-size: 18px; } .grid-2 .price-tag { font-size: 34px; }
-        .grid-4 .card-info { font-size: 15px; } .grid-4 .price-tag { font-size: 26px; }
-
-        .footer-notes { margin-top: 10px; background-color: #e60012; color: #fff; font-size: 12px; font-weight: bold; padding: 8px; text-align: center; border: 3px solid #000; flex-shrink: 0; }
-
-        /* 👑 輸出 JPG 模式隱藏輔助 UI */
-        .exporting-jpg .phone-upload-btn, 
-        .exporting-jpg .logo-placeholder { display: none !important; }
-
-        /* Modal 彈窗 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 10000; }
-        .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; border: 4px solid #000; max-height: 80vh; overflow-y: auto; }
-        .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; }
-        .template-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 2px solid #000; margin-bottom: 8px; border-radius: 6px; background: #fafafa; }
-        .template-item-title { font-weight: bold; }
-
-        /* --- 🔒 🖨️ A4 PDF 列印樣式 --- */
-            .poster-container { box-shadow: none !important; margin: 0 !important; width: 100% !important; height: 288mm !important; max-height: 288mm !important; }
-
-            .grid-12 { grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; padding: 4px !important; }
+    // 初始化載入第一頁
+    window.onload = function() {
+      addNewPage('grid-12');
+    };
+  </script>
+</body>
+</html>
