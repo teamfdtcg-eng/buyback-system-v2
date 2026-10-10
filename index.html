@@ -117,7 +117,6 @@
     }
     .btn-export-jpg { background: #ff007f; color: #fff; }
     .btn-delete-page { background: #ff3b30; color: #fff; }
-    .btn-print { background: #00e676; }
 
     /* 海報核心樣式 */
     .poster-container {
@@ -132,7 +131,6 @@
       min-height: 700px;
     }
 
-    /* 店舖 Icon */
     .logo-upload-area {
       width: 70px;
       height: 70px;
@@ -333,7 +331,6 @@
       cursor: pointer;
     }
 
-    /* 卡名與價錢固定不移位 */
     .card-info {
       background-color: #fff;
       padding: 4px 2px;
@@ -381,15 +378,6 @@
       text-align: center;
       outline: none;
     }
-
-    /* 格數字體動態調整 */
-    .grid-1 .card-info { font-size: 24px; padding: 10px; }
-    .grid-1 .price-tag { font-size: 48px; }
-    .grid-1 .price-label { font-size: 14px; padding: 4px; }
-    .grid-2 .card-info { font-size: 18px; }
-    .grid-2 .price-tag { font-size: 34px; }
-    .grid-4 .card-info { font-size: 15px; }
-    .grid-4 .price-tag { font-size: 26px; }
 
     .footer-notes {
       margin-top: 10px;
@@ -459,7 +447,6 @@
 
     .template-item-title { font-weight: bold; }
 
-    /* --- A4 PDF 列印樣式 --- */
     @media print {
       .control-panel, .page-setting-bar, .phone-upload-btn {
         display: none !important;
@@ -478,11 +465,6 @@
         height: 288mm !important;
         max-height: 288mm !important;
         page-break-after: always;
-      }
-      .grid-12 {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 4px !important;
-        padding: 4px !important;
       }
     }
   </style>
@@ -513,7 +495,6 @@
   <script>
     let pageCounter = 0;
 
-    // 新增頁面
     function addNewPage(gridType = 'grid-12') {
       pageCounter++;
       const pageId = `page-${pageCounter}`;
@@ -575,7 +556,6 @@
       renderGridItems(pageId, parseInt(gridType.replace('grid-', '')) || 12);
     }
 
-    // 渲染卡片格子
     function renderGridItems(pageId, count) {
       const gridContainer = document.getElementById(`grid-${pageId}`);
       gridContainer.innerHTML = '';
@@ -599,13 +579,11 @@
           </div>
         `;
 
-        // 綁定拖曳事件
         bindDragEvents(item);
         gridContainer.appendChild(item);
       }
     }
 
-    // 切換網格配置
     function changeGrid(pageId, gridType) {
       const gridContainer = document.getElementById(`grid-${pageId}`);
       gridContainer.className = `card-grid ${gridType}`;
@@ -613,7 +591,6 @@
       renderGridItems(pageId, count);
     }
 
-    // 刪除頁面
     function deletePage(pageId) {
       const page = document.getElementById(pageId);
       if (page && confirm('確定要刪除此頁面嗎？')) {
@@ -621,7 +598,6 @@
       }
     }
 
-    // 單張卡片上傳
     function uploadSingleCardImage(input) {
       if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -634,7 +610,6 @@
       }
     }
 
-    // 批次圖片上傳
     function batchUploadImages(pageId, input) {
       const files = Array.from(input.files);
       if (!files.length) return;
@@ -653,7 +628,6 @@
       });
     }
 
-    // 上傳 Logo
     function uploadLogo(input) {
       if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -669,7 +643,6 @@
       }
     }
 
-    // 卡片拖曳排序 API
     let draggedItem = null;
 
     function bindDragEvents(item) {
@@ -710,7 +683,6 @@
       });
     }
 
-    // 導出 JPG
     function exportToJPG(pageId) {
       const poster = document.getElementById(`poster-${pageId}`);
       poster.classList.add('exporting-jpg');
@@ -731,12 +703,10 @@
       });
     }
 
-    // 列印所有頁面
     function printAllPages() {
       window.print();
     }
 
-    // 模組 Modal 控制
     function openTemplateModal() {
       const modal = document.getElementById('templateModal');
       const list = document.getElementById('templateList');
@@ -761,7 +731,6 @@
       document.getElementById('templateModal').style.display = 'none';
     }
 
-    // 初始化載入第一頁
     window.onload = function() {
       addNewPage('grid-12');
     };
