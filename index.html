@@ -48,6 +48,7 @@
     .btn-add { background: #00b0ff; color: #fff; }
     .btn-template { background: #ff9900; color: #000; }
     .btn-save-draft { background: #e040fb; color: #fff; }
+    .btn-load-draft { background: #00e676; color: #000; }
 
     /* 頁面包裹與海報主體 */
     .pages-wrapper {
@@ -274,17 +275,8 @@
     }
 
     .card-item:active { cursor: grabbing; }
-
-    .card-item.dragging {
-      opacity: 0.4;
-      transform: scale(0.95);
-      border: 2px dashed #ff9900;
-    }
-
-    .card-item.drag-over {
-      border: 3px solid #00b0ff !important;
-      box-shadow: 0 0 10px #00b0ff;
-    }
+    .card-item.dragging { opacity: 0.4; transform: scale(0.95); border: 2px dashed #ff9900; }
+    .card-item.drag-over { border: 3px solid #00b0ff !important; box-shadow: 0 0 10px #00b0ff; }
 
     .image-container {
       width: 100%;
@@ -448,16 +440,9 @@
     .template-item-title { font-weight: bold; }
 
     @media print {
-      .control-panel, .page-setting-bar, .phone-upload-btn {
-        display: none !important;
-      }
-      body {
-        background: #fff !important;
-        padding: 0 !important;
-      }
-      .pages-wrapper {
-        margin-top: 0 !important;
-      }
+      .control-panel, .page-setting-bar, .phone-upload-btn { display: none !important; }
+      body { background: #fff !important; padding: 0 !important; }
+      .pages-wrapper { margin-top: 0 !important; }
       .poster-container {
         box-shadow: none !important;
         margin: 0 !important;
@@ -475,6 +460,8 @@
   <div class="control-panel">
     <button class="btn btn-add" onclick="addNewPage()">+ 新增頁面</button>
     <button class="btn btn-template" onclick="openTemplateModal()">模組範本</button>
+    <button class="btn btn-save-draft" onclick="saveDraft()">💾 儲存草稿</button>
+    <button class="btn btn-load-draft" onclick="loadDraft()">📂 讀取草稿</button>
     <button class="btn btn-save-draft" onclick="printAllPages()">🖨️ 全部列印</button>
   </div>
 
@@ -535,7 +522,6 @@
             <button class="btn-action btn-delete-page" onclick="deletePage('${pageId}')">刪除頁面</button>
           </div>
         </div>
-
         <div class="poster-container" id="poster-${pageId}">
           <div class="header-zone">
             <div class="logo-upload-area">
@@ -552,9 +538,7 @@
               <span>更新</span>
             </div>
           </div>
-
           <div class="card-grid ${gridType}" id="grid-${pageId}"></div>
-
           <div class="footer-notes" contenteditable="true">
             註： 收購價僅適用於完好無損卡牌。價格隨市場變動，收滿即止。
           </div>
@@ -568,7 +552,6 @@
     function renderGridItems(pageId, count) {
       const gridContainer = document.getElementById(`grid-${pageId}`);
       gridContainer.innerHTML = '';
-
       for (let i = 0; i < count; i++) {
         const item = document.createElement('div');
         item.className = 'card-item';
@@ -577,8 +560,7 @@
           <div class="image-container">
             <img src="" style="display:none;" />
             <div class="phone-upload-btn">
-              📷
-              <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
+              📷 <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
             </div>
           </div>
           <div class="card-info" contenteditable="true">卡牌名稱 / 編號</div>
@@ -587,7 +569,6 @@
             <div class="price-tag-value" contenteditable="true">$00</div>
           </div>
         `;
-
         bindDragEvents(item);
         gridContainer.appendChild(item);
       }
@@ -622,7 +603,6 @@
     function batchUploadImages(pageId, input) {
       const files = Array.from(input.files);
       if (!files.length) return;
-
       const cardItems = document.querySelectorAll(`#grid-${pageId} .card-item`);
       files.forEach((file, index) => {
         if (index < cardItems.length) {
@@ -653,27 +633,22 @@
     }
 
     let draggedItem = null;
-
     function bindDragEvents(item) {
       item.addEventListener('dragstart', function () {
         draggedItem = item;
         setTimeout(() => item.classList.add('dragging'), 0);
       });
-
       item.addEventListener('dragend', function () {
         item.classList.remove('dragging');
         draggedItem = null;
       });
-
       item.addEventListener('dragover', function (e) {
         e.preventDefault();
         item.classList.add('drag-over');
       });
-
       item.addEventListener('dragleave', function () {
         item.classList.remove('drag-over');
       });
-
       item.addEventListener('drop', function (e) {
         e.preventDefault();
         item.classList.remove('drag-over');
@@ -682,7 +657,6 @@
           const items = Array.from(grid.children);
           const draggedIdx = items.indexOf(draggedItem);
           const targetIdx = items.indexOf(item);
-
           if (draggedIdx < targetIdx) {
             grid.insertBefore(draggedItem, item.nextSibling);
           } else {
@@ -695,12 +669,7 @@
     function exportToJPG(pageId) {
       const poster = document.getElementById(`poster-${pageId}`);
       poster.classList.add('exporting-jpg');
-
-      html2canvas(poster, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      }).then(canvas => {
+      html2canvas(poster, { scale: 2, useCORS: true, logging: false }).then(canvas => {
         const link = document.createElement('a');
         link.download = `${pageId}-buyback.jpg`;
         link.href = canvas.toDataURL('image/jpeg', 0.95);
@@ -728,10 +697,6 @@
           <span class="template-item-title">熱門焦點 4 格模組</span>
           <button class="btn-action" onclick="addNewPage('grid-4'); closeTemplateModal();">套用</button>
         </div>
-        <div class="template-item">
-          <span class="template-item-title">高價單張 1 格模組</span>
-          <button class="btn-action" onclick="addNewPage('grid-1'); closeTemplateModal();">套用</button>
-        </div>
       `;
       modal.style.display = 'flex';
     }
@@ -740,8 +705,148 @@
       document.getElementById('templateModal').style.display = 'none';
     }
 
+    // --- 儲存與讀取草稿功能 ---
+    function saveDraft() {
+      const pages = [];
+      const pageBlocks = document.querySelectorAll('.page-block');
+
+      pageBlocks.forEach(page => {
+        const pageId = page.id;
+        const gridSelect = page.querySelector('.page-setting-bar select');
+        const gridType = gridSelect ? gridSelect.value : 'grid-12';
+
+        const logoImg = page.querySelector('.logo-upload-area img');
+        const logoSrc = (logoImg && logoImg.style.display !== 'none') ? logoImg.src : '';
+        const mainTitle = page.querySelector('.main-title h1').innerText;
+        const subtitle = page.querySelector('.main-title .subtitle').innerText;
+        const dateText = page.querySelector('.date-badge div').innerText;
+        const footerNotes = page.querySelector('.footer-notes').innerText;
+
+        const cards = [];
+        const cardItems = page.querySelectorAll('.card-item');
+        cardItems.forEach(item => {
+          const img = item.querySelector('.image-container img');
+          const imgSrc = (img && img.style.display !== 'none') ? img.src : '';
+          const name = item.querySelector('.card-info').innerText;
+          const price = item.querySelector('.price-tag-value').innerText;
+
+          cards.push({ imgSrc, name, price });
+        });
+
+        pages.push({
+          gridType,
+          logoSrc,
+          mainTitle,
+          subtitle,
+          dateText,
+          footerNotes,
+          cards
+        });
+      });
+
+      try {
+        localStorage.setItem('bantyo_buyback_draft', JSON.stringify(pages));
+        alert('草稿已成功儲存！');
+      } catch (e) {
+        alert('草稿儲存失敗，可能上傳圖片太多導致容量超出限制！');
+      }
+    }
+
+    function loadDraft() {
+      const savedData = localStorage.getItem('bantyo_buyback_draft');
+      if (!savedData) {
+        alert('找不到已儲存的草稿！');
+        return;
+      }
+
+      if (!confirm('讀取草稿將會覆蓋當前頁面，確定繼續？')) return;
+
+      const pages = JSON.parse(savedData);
+      const wrapper = document.getElementById('pagesWrapper');
+      wrapper.innerHTML = '';
+      pageCounter = 0;
+
+      pages.forEach(data => {
+        pageCounter++;
+        const pageId = `page-${pageCounter}`;
+        const pageElement = document.createElement('div');
+        pageElement.className = 'page-block';
+        pageElement.id = pageId;
+
+        pageElement.innerHTML = `
+          <div class="page-setting-bar">
+            <div class="action-group">
+              <label>網格配置：</label>
+              <select onchange="changeGrid('${pageId}', this.value)">
+                <option value="grid-1" ${data.gridType==='grid-1'?'selected':''}>1 格</option>
+                <option value="grid-2" ${data.gridType==='grid-2'?'selected':''}>2 格</option>
+                <option value="grid-4" ${data.gridType==='grid-4'?'selected':''}>4 格</option>
+                <option value="grid-9" ${data.gridType==='grid-9'?'selected':''}>9 格</option>
+                <option value="grid-12" ${data.gridType==='grid-12'?'selected':''}>12 格</option>
+                <option value="grid-15" ${data.gridType==='grid-15'?'selected':''}>15 格</option>
+              </select>
+            </div>
+            <div class="action-group">
+              <div class="batch-upload-btn-wrapper">
+                📷 批次上傳圖片
+                <input type="file" multiple accept="image/*" onchange="batchUploadImages('${pageId}', this)">
+              </div>
+              <button class="btn-action btn-export-jpg" onclick="exportToJPG('${pageId}')">🖼️ 導出 JPG</button>
+              <button class="btn-action btn-delete-page" onclick="deletePage('${pageId}')">刪除頁面</button>
+            </div>
+          </div>
+          <div class="poster-container" id="poster-${pageId}">
+            <div class="header-zone">
+              <div class="logo-upload-area">
+                <span class="logo-placeholder" style="${data.logoSrc ? 'display:none;' : ''}">上傳 Logo</span>
+                <img src="${data.logoSrc}" style="${data.logoSrc ? 'display:block;' : 'display:none;'}" />
+                <input type="file" accept="image/*" onchange="uploadLogo(this)">
+              </div>
+              <div class="main-title">
+                <h1 contenteditable="true">${data.mainTitle}</h1>
+                <div class="subtitle" contenteditable="true">${data.subtitle}</div>
+              </div>
+              <div class="date-badge">
+                <div contenteditable="true">${data.dateText}</div>
+                <span>更新</span>
+              </div>
+            </div>
+            <div class="card-grid ${data.gridType}" id="grid-${pageId}"></div>
+            <div class="footer-notes" contenteditable="true">${data.footerNotes}</div>
+          </div>
+        `;
+
+        wrapper.appendChild(pageElement);
+
+        const gridContainer = document.getElementById(`grid-${pageId}`);
+        data.cards.forEach(card => {
+          const item = document.createElement('div');
+          item.className = 'card-item';
+          item.draggable = true;
+          item.innerHTML = `
+            <div class="image-container">
+              <img src="${card.imgSrc}" style="${card.imgSrc ? 'display:block;' : 'display:none;'}" />
+              <div class="phone-upload-btn">
+                📷 <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
+              </div>
+            </div>
+            <div class="card-info" contenteditable="true">${card.name}</div>
+            <div class="price-tag">
+              <div class="price-label">買取<br>HKD</div>
+              <div class="price-tag-value" contenteditable="true">${card.price}</div>
+            </div>
+          `;
+          bindDragEvents(item);
+          gridContainer.appendChild(item);
+        });
+      });
+
+      alert('草稿已成功載入！');
+    }
+
+    // 預設新增第一頁
     window.onload = function() {
-      addNewPage('grid-12');
+      addNewPage();
     };
   </script>
 </body>
