@@ -495,10 +495,19 @@
   <script>
     let pageCounter = 0;
 
+    // 取得當前日期 (格式: DD/MM)
+    function getTodayFormatted() {
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, '0');
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
+    }
+
     function addNewPage(gridType = 'grid-12') {
       pageCounter++;
       const pageId = `page-${pageCounter}`;
       const wrapper = document.getElementById('pagesWrapper');
+      const dateText = getTodayFormatted();
 
       const pageElement = document.createElement('div');
       pageElement.className = 'page-block';
@@ -536,10 +545,10 @@
             </div>
             <div class="main-title">
               <h1 contenteditable="true">高價買取中</h1>
-              <div class="subtitle" contenteditable="true">BAN-TYO TCG 特效支援店</div>
+              <div class="subtitle" contenteditable="true">BAN-TYO TCG</div>
             </div>
             <div class="date-badge">
-              <div contenteditable="true">最新</div>
+              <div contenteditable="true">${dateText}</div>
               <span>更新</span>
             </div>
           </div>
@@ -547,7 +556,7 @@
           <div class="card-grid ${gridType}" id="grid-${pageId}"></div>
 
           <div class="footer-notes" contenteditable="true">
-            註：卡況需良好，價格按當日版本為準，本舖保留最終決定權。
+            註： 收購價僅適用於完好無損卡牌。價格隨市場變動，收滿即止。
           </div>
         </div>
       `;
