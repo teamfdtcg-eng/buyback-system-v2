@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BAN-TYO TCG 批次上傳多頁買取系統 (JPG輸出版)</title>
+
     <!-- 👑 引入 html2canvas 庫，實現網頁轉高清圖片導出 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -131,20 +132,6 @@
         .template-item-title { font-weight: bold; }
 
         /* --- 🔒 🖨️ A4 PDF 列印樣式 --- */
-        @page { size: A4 portrait; margin: 0; }
-        @media print {
-            html, body { width: 210mm !important; height: 297mm !important; background: linear-gradient(180deg, #1A1C4B 0%, #FF5E36 50%, #FFAE33 100%) !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; padding: 0 !important; margin: 0 !important; overflow: hidden !important; }
-            .control-panel, .page-setting-bar, .phone-upload-btn, .logo-placeholder, input[type="file"], .modal-overlay { display: none !important; }
-            [contenteditable="true"] { pointer-events: none; }
-            .pages-wrapper { margin: 0 !important; padding: 0 !important; width: 210mm !important; height: 297mm !important; }
-            
-            .page-block { 
-                width: 210mm !important; height: 297mm !important; 
-                box-sizing: border-box; padding: 4mm 5mm !important; 
-                page-break-after: always !important; page-break-inside: avoid !important; 
-                display: flex !important; align-items: center !important; justify-content: center !important; 
-            }
-            
             .poster-container { box-shadow: none !important; margin: 0 !important; width: 100% !important; height: 288mm !important; max-height: 288mm !important; }
 
             .grid-12 { grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; padding: 4px !important; }
