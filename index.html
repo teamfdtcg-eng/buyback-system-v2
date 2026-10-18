@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BAN-TYO TCG 批次上傳多頁買取系統 (JPG輸出版)</title>
+  <title>BAN-TYO TCG 批次上傳多頁買取系統 (Firebase 雲端同步版)</title>
   <!-- 引入 html2canvas 庫 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -44,11 +44,16 @@
       border-radius: 20px;
       cursor: pointer;
       font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
     .btn-add { background: #00b0ff; color: #fff; }
-    .btn-template { background: #ff9900; color: #000; }
     .btn-save-draft { background: #e040fb; color: #fff; }
     .btn-load-draft { background: #00e676; color: #000; }
+    .btn-auth { background: #4285F4; color: #fff; }
+    .user-info { color: #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .user-avatar { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #fff; }
 
     /* 頁面包裹與海報主體 */
     .pages-wrapper {
@@ -72,7 +77,7 @@
       gap: 8px;
     }
 
-    .page-setting-bar select, .page-setting-bar input[type="text"] {
+    .page-setting-bar select {
       padding: 4px 8px;
       font-weight: bold;
       border: 2px solid #000;
@@ -384,73 +389,9 @@
       outline: none;
     }
 
-    /* 輸出 JPG 模式隱藏輔助 UI */
     .exporting-jpg .phone-upload-btn,
     .exporting-jpg .logo-placeholder {
       display: none !important;
-    }
-
-    /* Modal 彈窗 */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-    }
-
-    .modal-content {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      border: 4px solid #000;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .modal-header {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #000;
-      padding-bottom: 8px;
-    }
-
-    .template-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      border: 2px solid #000;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      background: #fafafa;
-    }
-
-    .template-item-title { font-weight: bold; }
-
-    @media print {
-      .control-panel, .page-setting-bar, .phone-upload-btn { display: none !important; }
-      body { background: #fff !important; padding: 0 !important; }
-      .pages-wrapper { margin-top: 0 !important; }
-      .poster-container {
-        box-shadow: none !important;
-        margin: 0 !important;
-        width: 100% !important;
-        height: 288mm !important;
-        max-height: 288mm !important;
-        page-break-after: always;
-      }
     }
   </style>
 </head>
@@ -458,31 +399,243 @@
 
   <!-- 控制面板 -->
   <div class="control-panel">
+    <div id="authContainer">
+      <button class="btn btn-auth" onclick="loginGoogle()">🔑 Google 登入</button>
+    </div>
     <button class="btn btn-add" onclick="addNewPage()">+ 新增頁面</button>
-    <button class="btn btn-template" onclick="openTemplateModal()">模組範本</button>
-    <button class="btn btn-save-draft" onclick="saveDraft()">💾 儲存草稿</button>
-    <button class="btn btn-load-draft" onclick="loadDraft()">📂 讀取草稿</button>
-    <button class="btn btn-save-draft" onclick="printAllPages()">🖨️ 全部列印</button>
+    <button class="btn btn-save-draft" onclick="saveToCloud()">☁️ 儲存至雲端</button>
+    <button class="btn btn-load-draft" onclick="loadFromCloud()">📂 載入雲端草稿</button>
+    <button class="btn btn-save-draft" style="background:#ff3b30;" onclick="printAllPages()">🖨️ 全部列印</button>
   </div>
 
   <!-- 頁面容器區塊 -->
   <div class="pages-wrapper" id="pagesWrapper"></div>
 
-  <!-- 範本 Modal -->
-  <div class="modal-overlay" id="templateModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <span>選擇模組範本</span>
-        <button class="btn-action" onclick="closeTemplateModal()">✕</button>
-      </div>
-      <div id="templateList"></div>
-    </div>
-  </div>
+  <!-- 載入 Firebase 模組 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // 帶入你的專屬 Firebase 設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5zUuN3v4UyRoHwrMPWtcOdKQaauoW2AY",
+      authDomain: "bantyo-re-buy.firebaseapp.com",
+      projectId: "bantyo-re-buy",
+      storageBucket: "bantyo-re-buy.firebasestorage.app",
+      messagingSenderId: "391788144220",
+      appId: "1:391788144220:web:863aad7c65fbc73ad6e899",
+      measurementId: "G-N33FP2EXYV"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+
+    // 監聽 Google 登入狀態
+    onAuthStateChanged(auth, (user) => {
+      const authContainer = document.getElementById('authContainer');
+      if (user) {
+        currentUser = user;
+        authContainer.innerHTML = `
+          <div class="user-info">
+            <img class="user-avatar" src="${user.photoURL}" />
+            <span>${user.displayName}</span>
+            <button class="btn-action" style="padding:2px 6px;" onclick="logoutGoogle()">登出</button>
+          </div>
+        `;
+      } else {
+        currentUser = null;
+        authContainer.innerHTML = `<button class="btn btn-auth" onclick="loginGoogle()">🔑 Google 登入</button>`;
+      }
+    });
+
+    // Google 登入
+    window.loginGoogle = async function() {
+      try {
+        await signInWithPopup(auth, provider);
+        alert('登入成功！');
+      } catch (error) {
+        console.error("登入失敗:", error);
+        alert('登入失敗: ' + error.message);
+      }
+    };
+
+    // 登出
+    window.logoutGoogle = async function() {
+      await signOut(auth);
+      alert('已登出');
+    };
+
+    // 儲存至 Firebase 雲端
+    window.saveToCloud = async function() {
+      if (!currentUser) {
+        alert('請先點擊「Google 登入」再進行雲端儲存！');
+        return;
+      }
+
+      const pages = [];
+      const pageBlocks = document.querySelectorAll('.page-block');
+
+      pageBlocks.forEach(page => {
+        const pageId = page.id;
+        const gridSelect = page.querySelector('.page-setting-bar select');
+        const gridType = gridSelect ? gridSelect.value : 'grid-12';
+
+        const logoImg = page.querySelector('.logo-upload-area img');
+        const logoSrc = (logoImg && logoImg.style.display !== 'none') ? logoImg.src : '';
+        const mainTitle = page.querySelector('.main-title h1').innerText;
+        const subtitle = page.querySelector('.main-title .subtitle').innerText;
+        const dateText = page.querySelector('.date-badge div').innerText;
+        const footerNotes = page.querySelector('.footer-notes').innerText;
+
+        const cards = [];
+        const cardItems = page.querySelectorAll('.card-item');
+        cardItems.forEach(item => {
+          const img = item.querySelector('.image-container img');
+          const imgSrc = (img && img.style.display !== 'none') ? img.src : '';
+          const name = item.querySelector('.card-info').innerText;
+          const price = item.querySelector('.price-tag-value').innerText;
+
+          cards.push({ imgSrc, name, price });
+        });
+
+        pages.push({
+          gridType,
+          logoSrc,
+          mainTitle,
+          subtitle,
+          dateText,
+          footerNotes,
+          cards
+        });
+      });
+
+      try {
+        await setDoc(doc(db, "buyback_drafts", currentUser.uid), {
+          updatedAt: new Date(),
+          pages: pages
+        });
+        alert('草稿已成功同步上傳至雲端！');
+      } catch (e) {
+        console.error("雲端儲存錯誤:", e);
+        alert('儲存失敗！如果圖片數量極多，建議控制圖片尺寸。');
+      }
+    };
+
+    // 從 Firebase 載入雲端草稿
+    window.loadFromCloud = async function() {
+      if (!currentUser) {
+        alert('請先點擊「Google 登入」！');
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "buyback_drafts", currentUser.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          alert('雲端中找不到你的草稿紀錄！');
+          return;
+        }
+
+        if (!confirm('讀取雲端草稿將會覆蓋當前頁面，確定繼續？')) return;
+
+        const data = docSnap.data();
+        const pages = data.pages;
+        const wrapper = document.getElementById('pagesWrapper');
+        wrapper.innerHTML = '';
+        pageCounter = 0;
+
+        pages.forEach(pData => {
+          pageCounter++;
+          const pageId = `page-${pageCounter}`;
+          const pageElement = document.createElement('div');
+          pageElement.className = 'page-block';
+          pageElement.id = pageId;
+
+          pageElement.innerHTML = `
+            <div class="page-setting-bar">
+              <div class="action-group">
+                <label>網格配置：</label>
+                <select onchange="changeGrid('${pageId}', this.value)">
+                  <option value="grid-1" ${pData.gridType==='grid-1'?'selected':''}>1 格</option>
+                  <option value="grid-2" ${pData.gridType==='grid-2'?'selected':''}>2 格</option>
+                  <option value="grid-4" ${pData.gridType==='grid-4'?'selected':''}>4 格</option>
+                  <option value="grid-9" ${pData.gridType==='grid-9'?'selected':''}>9 格</option>
+                  <option value="grid-12" ${pData.gridType==='grid-12'?'selected':''}>12 格</option>
+                  <option value="grid-15" ${pData.gridType==='grid-15'?'selected':''}>15 格</option>
+                </select>
+              </div>
+              <div class="action-group">
+                <div class="batch-upload-btn-wrapper">
+                  📷 批次上傳圖片
+                  <input type="file" multiple accept="image/*" onchange="batchUploadImages('${pageId}', this)">
+                </div>
+                <button class="btn-action btn-export-jpg" onclick="exportToJPG('${pageId}')">🖼️ 導出 JPG</button>
+                <button class="btn-action btn-delete-page" onclick="deletePage('${pageId}')">刪除頁面</button>
+              </div>
+            </div>
+            <div class="poster-container" id="poster-${pageId}">
+              <div class="header-zone">
+                <div class="logo-upload-area">
+                  <span class="logo-placeholder" style="${pData.logoSrc ? 'display:none;' : ''}">上傳 Logo</span>
+                  <img src="${pData.logoSrc}" style="${pData.logoSrc ? 'display:block;' : 'display:none;'}" />
+                  <input type="file" accept="image/*" onchange="uploadLogo(this)">
+                </div>
+                <div class="main-title">
+                  <h1 contenteditable="true">${pData.mainTitle}</h1>
+                  <div class="subtitle" contenteditable="true">${pData.subtitle}</div>
+                </div>
+                <div class="date-badge">
+                  <div contenteditable="true">${pData.dateText}</div>
+                  <span>更新</span>
+                </div>
+              </div>
+              <div class="card-grid ${pData.gridType}" id="grid-${pageId}"></div>
+              <div class="footer-notes" contenteditable="true">${pData.footerNotes}</div>
+            </div>
+          `;
+
+          wrapper.appendChild(pageElement);
+
+          const gridContainer = document.getElementById(`grid-${pageId}`);
+          pData.cards.forEach(card => {
+            const item = document.createElement('div');
+            item.className = 'card-item';
+            item.draggable = true;
+            item.innerHTML = `
+              <div class="image-container">
+                <img src="${card.imgSrc}" style="${card.imgSrc ? 'display:block;' : 'display:none;'}" />
+                <div class="phone-upload-btn">
+                  📷 <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
+                </div>
+              </div>
+              <div class="card-info" contenteditable="true">${card.name}</div>
+              <div class="price-tag">
+                <div class="price-label">買取<br>HKD</div>
+                <div class="price-tag-value" contenteditable="true">${card.price}</div>
+              </div>
+            `;
+            bindDragEvents(item);
+            gridContainer.appendChild(item);
+          });
+        });
+
+        alert('已成功從雲端下載並恢復草稿！');
+      } catch (e) {
+        console.error("載入失敗:", e);
+        alert('讀取草稿失敗！');
+      }
+    };
+  </script>
 
   <script>
     let pageCounter = 0;
 
-    // 取得當前日期 (格式: DD/MM)
     function getTodayFormatted() {
       const today = new Date();
       const day = String(today.getDate()).padStart(2, '0');
@@ -685,166 +838,6 @@
       window.print();
     }
 
-    function openTemplateModal() {
-      const modal = document.getElementById('templateModal');
-      const list = document.getElementById('templateList');
-      list.innerHTML = `
-        <div class="template-item">
-          <span class="template-item-title">標準 12 格模組</span>
-          <button class="btn-action" onclick="addNewPage('grid-12'); closeTemplateModal();">套用</button>
-        </div>
-        <div class="template-item">
-          <span class="template-item-title">熱門焦點 4 格模組</span>
-          <button class="btn-action" onclick="addNewPage('grid-4'); closeTemplateModal();">套用</button>
-        </div>
-      `;
-      modal.style.display = 'flex';
-    }
-
-    function closeTemplateModal() {
-      document.getElementById('templateModal').style.display = 'none';
-    }
-
-    // --- 儲存與讀取草稿功能 ---
-    function saveDraft() {
-      const pages = [];
-      const pageBlocks = document.querySelectorAll('.page-block');
-
-      pageBlocks.forEach(page => {
-        const pageId = page.id;
-        const gridSelect = page.querySelector('.page-setting-bar select');
-        const gridType = gridSelect ? gridSelect.value : 'grid-12';
-
-        const logoImg = page.querySelector('.logo-upload-area img');
-        const logoSrc = (logoImg && logoImg.style.display !== 'none') ? logoImg.src : '';
-        const mainTitle = page.querySelector('.main-title h1').innerText;
-        const subtitle = page.querySelector('.main-title .subtitle').innerText;
-        const dateText = page.querySelector('.date-badge div').innerText;
-        const footerNotes = page.querySelector('.footer-notes').innerText;
-
-        const cards = [];
-        const cardItems = page.querySelectorAll('.card-item');
-        cardItems.forEach(item => {
-          const img = item.querySelector('.image-container img');
-          const imgSrc = (img && img.style.display !== 'none') ? img.src : '';
-          const name = item.querySelector('.card-info').innerText;
-          const price = item.querySelector('.price-tag-value').innerText;
-
-          cards.push({ imgSrc, name, price });
-        });
-
-        pages.push({
-          gridType,
-          logoSrc,
-          mainTitle,
-          subtitle,
-          dateText,
-          footerNotes,
-          cards
-        });
-      });
-
-      try {
-        localStorage.setItem('bantyo_buyback_draft', JSON.stringify(pages));
-        alert('草稿已成功儲存！');
-      } catch (e) {
-        alert('草稿儲存失敗，可能上傳圖片太多導致容量超出限制！');
-      }
-    }
-
-    function loadDraft() {
-      const savedData = localStorage.getItem('bantyo_buyback_draft');
-      if (!savedData) {
-        alert('找不到已儲存的草稿！');
-        return;
-      }
-
-      if (!confirm('讀取草稿將會覆蓋當前頁面，確定繼續？')) return;
-
-      const pages = JSON.parse(savedData);
-      const wrapper = document.getElementById('pagesWrapper');
-      wrapper.innerHTML = '';
-      pageCounter = 0;
-
-      pages.forEach(data => {
-        pageCounter++;
-        const pageId = `page-${pageCounter}`;
-        const pageElement = document.createElement('div');
-        pageElement.className = 'page-block';
-        pageElement.id = pageId;
-
-        pageElement.innerHTML = `
-          <div class="page-setting-bar">
-            <div class="action-group">
-              <label>網格配置：</label>
-              <select onchange="changeGrid('${pageId}', this.value)">
-                <option value="grid-1" ${data.gridType==='grid-1'?'selected':''}>1 格</option>
-                <option value="grid-2" ${data.gridType==='grid-2'?'selected':''}>2 格</option>
-                <option value="grid-4" ${data.gridType==='grid-4'?'selected':''}>4 格</option>
-                <option value="grid-9" ${data.gridType==='grid-9'?'selected':''}>9 格</option>
-                <option value="grid-12" ${data.gridType==='grid-12'?'selected':''}>12 格</option>
-                <option value="grid-15" ${data.gridType==='grid-15'?'selected':''}>15 格</option>
-              </select>
-            </div>
-            <div class="action-group">
-              <div class="batch-upload-btn-wrapper">
-                📷 批次上傳圖片
-                <input type="file" multiple accept="image/*" onchange="batchUploadImages('${pageId}', this)">
-              </div>
-              <button class="btn-action btn-export-jpg" onclick="exportToJPG('${pageId}')">🖼️ 導出 JPG</button>
-              <button class="btn-action btn-delete-page" onclick="deletePage('${pageId}')">刪除頁面</button>
-            </div>
-          </div>
-          <div class="poster-container" id="poster-${pageId}">
-            <div class="header-zone">
-              <div class="logo-upload-area">
-                <span class="logo-placeholder" style="${data.logoSrc ? 'display:none;' : ''}">上傳 Logo</span>
-                <img src="${data.logoSrc}" style="${data.logoSrc ? 'display:block;' : 'display:none;'}" />
-                <input type="file" accept="image/*" onchange="uploadLogo(this)">
-              </div>
-              <div class="main-title">
-                <h1 contenteditable="true">${data.mainTitle}</h1>
-                <div class="subtitle" contenteditable="true">${data.subtitle}</div>
-              </div>
-              <div class="date-badge">
-                <div contenteditable="true">${data.dateText}</div>
-                <span>更新</span>
-              </div>
-            </div>
-            <div class="card-grid ${data.gridType}" id="grid-${pageId}"></div>
-            <div class="footer-notes" contenteditable="true">${data.footerNotes}</div>
-          </div>
-        `;
-
-        wrapper.appendChild(pageElement);
-
-        const gridContainer = document.getElementById(`grid-${pageId}`);
-        data.cards.forEach(card => {
-          const item = document.createElement('div');
-          item.className = 'card-item';
-          item.draggable = true;
-          item.innerHTML = `
-            <div class="image-container">
-              <img src="${card.imgSrc}" style="${card.imgSrc ? 'display:block;' : 'display:none;'}" />
-              <div class="phone-upload-btn">
-                📷 <input type="file" accept="image/*" onchange="uploadSingleCardImage(this)">
-              </div>
-            </div>
-            <div class="card-info" contenteditable="true">${card.name}</div>
-            <div class="price-tag">
-              <div class="price-label">買取<br>HKD</div>
-              <div class="price-tag-value" contenteditable="true">${card.price}</div>
-            </div>
-          `;
-          bindDragEvents(item);
-          gridContainer.appendChild(item);
-        });
-      });
-
-      alert('草稿已成功載入！');
-    }
-
-    // 預設新增第一頁
     window.onload = function() {
       addNewPage();
     };
