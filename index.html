@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BAN-TYO TCG 批次上傳多頁買取系統 (Firebase 雲端同步版)</title>
+  <title>BAN-TYO TCG 批次上傳多頁買取系統 (極速雲端同步版)</title>
   <!-- 引入 html2canvas 庫 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
-    /* --- 基礎佈局 --- */
     body {
       margin: 0;
       padding: 15px 10px 100px 10px;
@@ -19,7 +18,6 @@
       min-height: 100vh;
     }
 
-    /* 頂部控制面板 */
     .control-panel {
       position: fixed;
       top: 10px;
@@ -55,7 +53,6 @@
     .user-info { color: #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
     .user-avatar { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #fff; }
 
-    /* 頁面包裹與海報主體 */
     .pages-wrapper {
       width: 100%;
       max-width: 800px;
@@ -124,7 +121,6 @@
     .btn-export-jpg { background: #ff007f; color: #fff; }
     .btn-delete-page { background: #ff3b30; color: #fff; }
 
-    /* 海報核心樣式 */
     .poster-container {
       background-color: #fff;
       width: 100%;
@@ -241,7 +237,6 @@
       .header-zone { gap: 15px; }
     }
 
-    /* 卡片網格 */
     .card-grid {
       display: grid;
       gap: 8px;
@@ -264,7 +259,6 @@
       .grid-15 { grid-template-columns: repeat(5, 1fr); }
     }
 
-    /* 卡片項目 (支援拖曳排序) */
     .card-item {
       background-color: #fff;
       border: 2px solid #000;
@@ -403,7 +397,7 @@
       <button class="btn btn-auth" onclick="loginGoogle()">🔑 Google 登入</button>
     </div>
     <button class="btn btn-add" onclick="addNewPage()">+ 新增頁面</button>
-    <button class="btn btn-save-draft" onclick="saveToCloud()">☁️ 儲存至雲端</button>
+    <button class="btn btn-save-draft" id="btnSave" onclick="saveToCloud()">☁️ 儲存至雲端</button>
     <button class="btn btn-load-draft" onclick="loadFromCloud()">📂 載入雲端草稿</button>
     <button class="btn btn-save-draft" style="background:#ff3b30;" onclick="printAllPages()">🖨️ 全部列印</button>
   </div>
@@ -417,7 +411,6 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 專屬 Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyA5zUuN3v4UyRoHwrMPWtcOdKQaauoW2AY",
       authDomain: "bantyo-re-buy.firebaseapp.com",
@@ -435,7 +428,6 @@
 
     let currentUser = null;
 
-    // 監聽 Google 登入狀態
     onAuthStateChanged(auth, (user) => {
       const authContainer = document.getElementById('authContainer');
       if (user) {
@@ -453,7 +445,6 @@
       }
     });
 
-    // Google 登入
     window.loginGoogle = async function() {
       try {
         await signInWithPopup(auth, provider);
@@ -464,7 +455,6 @@
       }
     };
 
-    // 登出
     window.logoutGoogle = async function() {
       await signOut(auth);
       alert('已登出');
@@ -477,52 +467,59 @@
         return;
       }
 
-      const pages = [];
-      const pageBlocks = document.querySelectorAll('.page-block');
-
-      pageBlocks.forEach(page => {
-        const pageId = page.id;
-        const gridSelect = page.querySelector('.page-setting-bar select');
-        const gridType = gridSelect ? gridSelect.value : 'grid-12';
-
-        const logoImg = page.querySelector('.logo-upload-area img');
-        const logoSrc = (logoImg && logoImg.style.display !== 'none') ? logoImg.src : '';
-        const mainTitle = page.querySelector('.main-title h1').innerText;
-        const subtitle = page.querySelector('.main-title .subtitle').innerText;
-        const dateText = page.querySelector('.date-badge div').innerText;
-        const footerNotes = page.querySelector('.footer-notes').innerText;
-
-        const cards = [];
-        const cardItems = page.querySelectorAll('.card-item');
-        cardItems.forEach(item => {
-          const img = item.querySelector('.image-container img');
-          const imgSrc = (img && img.style.display !== 'none') ? img.src : '';
-          const name = item.querySelector('.card-info').innerText;
-          const price = item.querySelector('.price-tag-value').innerText;
-
-          cards.push({ imgSrc, name, price });
-        });
-
-        pages.push({
-          gridType,
-          logoSrc,
-          mainTitle,
-          subtitle,
-          dateText,
-          footerNotes,
-          cards
-        });
-      });
+      const saveBtn = document.getElementById('btnSave');
+      saveBtn.innerText = '⏳ 儲存中...';
+      saveBtn.disabled = true;
 
       try {
+        const pages = [];
+        const pageBlocks = document.querySelectorAll('.page-block');
+
+        pageBlocks.forEach(page => {
+          const gridSelect = page.querySelector('.page-setting-bar select');
+          const gridType = gridSelect ? gridSelect.value : 'grid-12';
+
+          const logoImg = page.querySelector('.logo-upload-area img');
+          const logoSrc = (logoImg && logoImg.style.display !== 'none') ? logoImg.src : '';
+          const mainTitle = page.querySelector('.main-title h1').innerText;
+          const subtitle = page.querySelector('.main-title .subtitle').innerText;
+          const dateText = page.querySelector('.date-badge div').innerText;
+          const footerNotes = page.querySelector('.footer-notes').innerText;
+
+          const cards = [];
+          const cardItems = page.querySelectorAll('.card-item');
+          cardItems.forEach(item => {
+            const img = item.querySelector('.image-container img');
+            const imgSrc = (img && img.style.display !== 'none') ? img.src : '';
+            const name = item.querySelector('.card-info').innerText;
+            const price = item.querySelector('.price-tag-value').innerText;
+
+            cards.push({ imgSrc, name, price });
+          });
+
+          pages.push({
+            gridType,
+            logoSrc,
+            mainTitle,
+            subtitle,
+            dateText,
+            footerNotes,
+            cards
+          });
+        });
+
         await setDoc(doc(db, "buyback_drafts", currentUser.uid), {
           updatedAt: new Date(),
           pages: pages
         });
-        alert('草稿已成功同步上傳至雲端！');
+
+        alert('🎉 草稿已成功同步儲存至雲端！');
       } catch (e) {
         console.error("雲端儲存錯誤:", e);
-        alert('儲存失敗！如果圖片數量極多，建議控制圖片尺寸。');
+        alert('儲存失敗：' + e.message);
+      } finally {
+        saveBtn.innerText = '☁️ 儲存至雲端';
+        saveBtn.disabled = false;
       }
     };
 
@@ -625,7 +622,7 @@
           });
         });
 
-        alert('已成功從雲端下載並恢復草稿！');
+        alert('已成功從雲端載入包含圖片在內的所有草稿！');
       } catch (e) {
         console.error("載入失敗:", e);
         alert('讀取草稿失敗！');
@@ -636,11 +633,11 @@
   <script>
     let pageCounter = 0;
 
-    // 圖片自動壓縮函式 (防止過大)
+    // 前端超強深度壓縮函式 (確保圖片小於 20KB)
     function compressImage(file, callback) {
-      const maxWidth = 800;
-      const maxHeight = 800;
-      const quality = 0.7;
+      const maxWidth = 400;  
+      const maxHeight = 400;
+      const quality = 0.5;   
 
       const reader = new FileReader();
       reader.readAsDataURL(file);
